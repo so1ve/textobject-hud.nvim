@@ -65,6 +65,7 @@ local function source_position()
     local cursor_line = vim.api.nvim_buf_get_lines(state.source_buf, cursor_row, cursor_row + 1, false)[1] or ""
     local line_origin_col = cursor_screen_col
       - vim.fn.strdisplaywidth(cursor_line:sub(1, clamp(cursor_col, 0, #cursor_line)))
+    local right_row = clamp(cursor_screen_row, 0, max_row)
     local anchor = {
       top = cursor_screen_row,
       bottom = cursor_screen_row,
@@ -84,7 +85,10 @@ local function source_position()
       end
 
       if end_row >= top_line and start_row <= bottom_line then
-        for row = math.max(start_row, top_line), math.min(end_row, bottom_line) do
+        local first_row = math.max(start_row, top_line + right_row)
+        local last_row = math.min(end_row, top_line + right_row + height - 1, bottom_line)
+
+        for row = first_row, last_row do
           local line = vim.api.nvim_buf_get_lines(state.source_buf, row, row + 1, false)[1] or ""
           local end_col = row == item.range.end_row and item.range.end_col or #line
           local prefix = line:sub(1, clamp(end_col, 0, #line))
@@ -105,7 +109,7 @@ local function source_position()
     local below_row = anchor.bottom + row_gap
     local above_row = anchor.top - height - row_gap
     local choices = {
-      { row = clamp(anchor.top, 0, max_row), col = right_col, fits = right_col <= max_col },
+      { row = right_row, col = right_col, fits = right_col <= max_col },
       { row = below_row, col = vertical_col, fits = below_row <= max_row },
       { row = above_row, col = vertical_col, fits = above_row >= 0 },
     }
