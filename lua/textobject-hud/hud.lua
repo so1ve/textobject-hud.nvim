@@ -59,12 +59,9 @@ local function source_position()
     local col_gap = math.max(0, state.opts.window.col_offset)
     local cursor = vim.api.nvim_win_get_cursor(state.source_win)
     local cursor_row = cursor[1] - 1
-    local cursor_col = cursor[2]
     local cursor_screen_row = math.max(0, vim.fn.winline() - 1)
     local cursor_screen_col = math.max(0, vim.fn.wincol() - 1)
-    local cursor_line = vim.api.nvim_buf_get_lines(state.source_buf, cursor_row, cursor_row + 1, false)[1] or ""
-    local line_origin_col = cursor_screen_col
-      - vim.fn.strdisplaywidth(cursor_line:sub(1, clamp(cursor_col, 0, #cursor_line)))
+    local window_screen_col = vim.fn.win_screenpos(state.source_win)[2]
     local right_row = clamp(cursor_screen_row, 0, max_row)
     local anchor = {
       top = cursor_screen_row,
@@ -91,9 +88,11 @@ local function source_position()
         for row = first_row, last_row do
           local line = vim.api.nvim_buf_get_lines(state.source_buf, row, row + 1, false)[1] or ""
           local end_col = row == item.range.end_row and item.range.end_col or #line
-          local prefix = line:sub(1, clamp(end_col, 0, #line))
+          local position = vim.fn.screenpos(state.source_win, row + 1, clamp(end_col, 0, #line) + 1)
 
-          right_col = math.max(right_col, line_origin_col + vim.fn.strdisplaywidth(prefix))
+          if position.row > 0 and position.col > 0 then
+            right_col = math.max(right_col, position.endcol - window_screen_col)
+          end
         end
 
         anchor = {
