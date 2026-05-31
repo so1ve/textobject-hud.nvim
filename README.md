@@ -4,6 +4,14 @@ Show the textobjects and selectable ranges available at your cursor in a small f
 
 `textobject-hud.nvim` collects candidates from configured sources, previews the exact source range under the HUD cursor, and selects that range. Built-in sources include Tree-sitter textobject captures and mini.ai textobjects.
 
+## Screenshots
+
+![Screenshot 1](./assets/screenshot-1.png)
+
+![Screenshot 2](./assets/screenshot-2.png)
+
+![Screenshot 3](./assets/screenshot-3.png)
+
 ## Requirements
 
 - Neovim 0.12+
