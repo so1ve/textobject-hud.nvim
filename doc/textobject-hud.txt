@@ -1,0 +1,176 @@
+*textobject-hud.nvim* Show structural textobjects available at cursor
+
+`textobject-hud.nvim` opens a small cursor-local HUD for Tree-sitter
+textobject captures. It discovers captures from `textobjects.scm`, previews
+the exact source range under the HUD cursor, and selects that range with
+`<CR>`.
+
+Key hints are display-only; textobjects are discovered automatically from
+`textobjects.scm` when those query files are available on 'runtimepath'.
+Generic Tree-sitter ancestor nodes can be enabled, but are off by default
+because they are AST node types, not textobject captures.
+
+# Setup ~
+
+Minimal setup:
+>lua
+  require("textobject-hud").setup()
+<
+
+Suggested mapping:
+>lua
+  vim.keymap.set("n", "<leader>o", function()
+    require("textobject-hud").open()
+  end, { desc = "Open textobject HUD" })
+<
+
+Optional dependency: `nvim-treesitter-textobjects` query files on
+'runtimepath' provide capture-based entries like `@function.outer` and
+`@parameter.inner`.
+
+# Usage ~
+
+Open the HUD with |:TextobjectHud| or `require("textobject-hud").open()`.
+
+Controls inside the HUD:
+>
+  <CR>          Select candidate
+  q / <Esc>     Close HUD
+<
+
+Use native window movement (`j`, `k`, arrows, `<C-d>`, `<C-u>`, mouse, ...)
+to move the HUD cursor. The source preview follows the HUD cursor.
+
+# Commands ~
+
+                                                       *:TextobjectHud*
+`:TextobjectHud`
+    Open the HUD at the current cursor position.
+
+                                                *:TextobjectHudInspect*
+`:TextobjectHudInspect`
+    Print collected candidates for debugging.
+
+------------------------------------------------------------------------------
+                                                                     *M.setup()*
+                               `M.setup`({opts})
+Setup global configuration.
+Parameters ~
+{opts} `(optional)` `(TextobjectHudConfig)`
+
+------------------------------------------------------------------------------
+                                                                      *M.open()*
+                                `M.open`({opts})
+Open the HUD at the current cursor position.
+Parameters ~
+{opts} `(optional)` `(TextobjectHudConfig)`
+
+------------------------------------------------------------------------------
+                                                                     *M.close()*
+                                  `M.close`()
+Close the active HUD.
+
+------------------------------------------------------------------------------
+                                                                   *M.inspect()*
+                                 `M.inspect`()
+Print and return candidates collected at the current cursor.
+
+
+==============================================================================
+------------------------------------------------------------------------------
+# Options ~
+
+Configuration is passed to `require("textobject-hud").setup()`.
+
+Class ~
+{TextobjectHudWindowConfig}
+Fields ~
+{border} `(string | string[])` Floating window border.
+{width} `(integer)` HUD width.
+{max_height} `(integer)` Maximum HUD height.
+{row_offset} `(integer)` Row offset from the source cursor.
+{col_offset} `(integer)` Column offset from the source cursor.
+{follow} `(boolean)` Reposition the HUD when the source cursor or source
+ window changes.
+
+------------------------------------------------------------------------------
+Class ~
+{TextobjectHudPreviewConfig}
+Fields ~
+{enabled} `(boolean)` Highlight the selected range while the HUD is open.
+{hl_group} `(string)` Highlight group used for source range preview.
+
+------------------------------------------------------------------------------
+Class ~
+{TextobjectHudCollectConfig}
+Fields ~
+{ancestors} `(boolean)` Include generic Tree-sitter ancestor nodes. These
+ are AST node types, not textobject captures.
+{textobjects} `(boolean)` Include automatically discovered captures from
+ `textobjects.scm` when query files exist.
+{max_ancestor_depth} `(integer)` Maximum number of containing ancestor nodes to inspect.
+{max_lines} `(integer)` Ignore very large ranges.
+{include_anonymous} `(boolean)` Include anonymous Tree-sitter nodes in ancestor candidates.
+
+------------------------------------------------------------------------------
+Class ~
+{TextobjectHudConfig}
+Fields ~
+{window} `(TextobjectHudWindowConfig)` Floating window options.
+{preview} `(TextobjectHudPreviewConfig)` Source preview options.
+{collect} `(TextobjectHudCollectConfig)` Candidate collection options.
+{key_hints} `(table<string, string | string[]>)` Display-only capture-to-keys mapping.
+
+------------------------------------------------------------------------------
+# Default config ~
+
+>lua
+  require("textobject-hud").setup({
+    -- Floating HUD window.
+    window = {
+      border = "rounded",
+      width = 50,
+      max_height = 12,
+      row_offset = 1,
+      col_offset = 1,
+      follow = true,
+    },
+
+    -- Source-buffer range preview shown while the HUD is open.
+    preview = {
+      enabled = true,
+      hl_group = "TextobjectHudRange",
+    },
+
+    -- Candidate sources and safety limits.
+    -- `textobjects` discovers captures from `textobjects.scm` automatically.
+    -- `ancestors` adds generic AST nodes, so it is disabled by default.
+    collect = {
+      ancestors = false,
+      textobjects = true,
+      max_ancestor_depth = 20,
+      max_lines = 200,
+      include_anonymous = false,
+    },
+
+    -- Display-only capture-to-keys mapping. This does not define or whitelist
+    -- textobjects; it only annotates captures that were already discovered.
+    key_hints = {},
+  })
+<
+
+`key_hints` maps capture names to display-only hints:
+>lua
+  require("textobject-hud").setup({
+    key_hints = {
+      ["@function.outer"] = { "]f", "[f", "]F", "[F" },
+      ["@function.inner"] = "if",
+    },
+  })
+<
+
+This table does not define or whitelist textobjects. Captures are discovered
+from `textobjects.scm` automatically.
+
+
+ vim:tw=78:ts=8:noet:ft=help:norl:

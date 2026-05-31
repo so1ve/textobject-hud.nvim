@@ -1,0 +1,7 @@
+:TextobjectHud	textobject-hud.txt	/*:TextobjectHud*
+:TextobjectHudInspect	textobject-hud.txt	/*:TextobjectHudInspect*
+M.close()	textobject-hud.txt	/*M.close()*
+M.inspect()	textobject-hud.txt	/*M.inspect()*
+M.open()	textobject-hud.txt	/*M.open()*
+M.setup()	textobject-hud.txt	/*M.setup()*
+textobject-hud.nvim	textobject-hud.txt	/*textobject-hud.nvim*
