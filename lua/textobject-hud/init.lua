@@ -1,9 +1,9 @@
---- *textobject-hud.nvim* Show selectable ranges available at cursor
+--- *textobject-hud.nvim* Show selectable ranges available near cursor
 ---
---- `textobject-hud.nvim` opens a small cursor-local HUD for textobjects and
---- other selectable ranges. It collects candidates from configured sources,
---- previews the exact source range under the HUD cursor, and selects that range
---- with `<CR>`.
+--- `textobject-hud.nvim` opens a small HUD for textobjects and other selectable
+--- ranges near the cursor. It collects candidates from configured sources,
+--- previews the exact source range under the HUD cursor, avoids the selected
+--- range when possible, and selects that range with `<CR>`.
 ---
 --- Built-in sources include Tree-sitter captures from `textobjects.scm` and
 --- mini.ai textobjects when available. Key hints are display-only and do not
@@ -50,7 +50,7 @@
 ---
 ---                                                        *:TextobjectHud*
 --- `:TextobjectHud`
----     Open the HUD at the current cursor position.
+---     Open the HUD near the selected range, with cursor fallback.
 ---
 ---                                                 *:TextobjectHudInspect*
 --- `:TextobjectHudInspect`
@@ -85,7 +85,7 @@ function M.setup(opts)
   highlight.setup()
 end
 
---- Open the HUD at the current cursor position.
+--- Open the HUD near the selected range, with cursor fallback.
 ---@param opts? TextobjectHudConfig
 function M.open(opts)
   local config = require("textobject-hud.config")

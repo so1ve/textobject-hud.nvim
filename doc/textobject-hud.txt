@@ -1,9 +1,9 @@
-*textobject-hud.nvim* Show selectable ranges available at cursor
+*textobject-hud.nvim* Show selectable ranges available near cursor
 
-`textobject-hud.nvim` opens a small cursor-local HUD for textobjects and
-other selectable ranges. It collects candidates from configured sources,
-previews the exact source range under the HUD cursor, and selects that range
-with `<CR>`.
+`textobject-hud.nvim` opens a small HUD for textobjects and other selectable
+ranges near the cursor. It collects candidates from configured sources,
+previews the exact source range under the HUD cursor, avoids the selected
+range when possible, and selects that range with `<CR>`.
 
 Built-in sources include Tree-sitter captures from `textobjects.scm` and
 mini.ai textobjects when available. Key hints are display-only and do not
@@ -50,7 +50,7 @@ to move the HUD cursor. The source preview follows the HUD cursor.
 
                                                        *:TextobjectHud*
 `:TextobjectHud`
-    Open the HUD at the current cursor position.
+    Open the HUD near the selected range, with cursor fallback.
 
                                                 *:TextobjectHudInspect*
 `:TextobjectHudInspect`
@@ -66,7 +66,7 @@ Parameters ~
 ------------------------------------------------------------------------------
                                                                       *M.open()*
                                 `M.open`({opts})
-Open the HUD at the current cursor position.
+Open the HUD near the selected range, with cursor fallback.
 Parameters ~
 {opts} `(optional)` `(TextobjectHudConfig)`
 
@@ -122,8 +122,8 @@ Class ~
 Fields ~
 {border} `(string | string[])` Floating window border.
 {max_height} `(integer)` Maximum HUD height.
-{row_offset} `(integer)` Row offset from the source cursor.
-{col_offset} `(integer)` Column offset from the source cursor.
+{row_offset} `(integer)` Vertical gap from the selected range, or cursor fallback.
+{col_offset} `(integer)` Horizontal gap from the selected range, or cursor fallback.
 {follow} `(boolean)` Reposition the HUD when the source cursor or source
  window changes.
 
@@ -160,7 +160,7 @@ Fields ~
 >lua
   local hud = require("textobject-hud")
   hud.setup({
-    -- Floating HUD window.
+    -- Floating HUD window. It prefers the right side and avoids the selected range.
     window = {
       border = "rounded",
       max_height = 12,

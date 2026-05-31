@@ -28,15 +28,97 @@ local function hud_height()
   return math.min(math.max(#state.candidates, 1), state.opts.window.max_height)
 end
 
+local function clamp(value, min, max)
+  if max < min then
+    return min
+  end
+
+  return math.min(math.max(value, min), max)
+end
+
+local function candidate_at_cursor()
+  if #state.candidates == 0 or not valid_win(state.hud_win) then
+    return nil
+  end
+
+  return state.candidates[vim.api.nvim_win_get_cursor(state.hud_win)[1]]
+end
+
 local function source_position()
-  if not valid_win(state.source_win) then
+  if not valid_win(state.source_win) or not state.layout then
     return { row = state.opts.window.row_offset, col = state.opts.window.col_offset }
   end
 
   return vim.api.nvim_win_call(state.source_win, function()
+    local win_width = vim.api.nvim_win_get_width(state.source_win)
+    local win_height = vim.api.nvim_win_get_height(state.source_win)
+    local height = hud_height()
+    local max_row = math.max(0, win_height - height)
+    local max_col = math.max(0, win_width - state.layout.width)
+    local row_gap = math.max(0, state.opts.window.row_offset)
+    local col_gap = math.max(0, state.opts.window.col_offset)
+    local cursor = vim.api.nvim_win_get_cursor(state.source_win)
+    local cursor_row = cursor[1] - 1
+    local cursor_col = cursor[2]
+    local cursor_screen_row = math.max(0, vim.fn.winline() - 1)
+    local cursor_screen_col = math.max(0, vim.fn.wincol() - 1)
+    local cursor_line = vim.api.nvim_buf_get_lines(state.source_buf, cursor_row, cursor_row + 1, false)[1] or ""
+    local line_origin_col = cursor_screen_col
+      - vim.fn.strdisplaywidth(cursor_line:sub(1, clamp(cursor_col, 0, #cursor_line)))
+    local anchor = {
+      top = cursor_screen_row,
+      bottom = cursor_screen_row,
+      right = cursor_screen_col,
+    }
+    local item = candidate_at_cursor() or state.candidates[1]
+
+    if item and item.range then
+      local top_line = vim.fn.line("w0") - 1
+      local bottom_line = vim.fn.line("w$") - 1
+      local start_row = item.range.start_row
+      local end_row = item.range.end_row
+      local right_col = cursor_screen_col
+
+      if item.range.end_col == 0 and end_row > start_row then
+        end_row = end_row - 1
+      end
+
+      if end_row >= top_line and start_row <= bottom_line then
+        for row = math.max(start_row, top_line), math.min(end_row, bottom_line) do
+          local line = vim.api.nvim_buf_get_lines(state.source_buf, row, row + 1, false)[1] or ""
+          local end_col = row == item.range.end_row and item.range.end_col or #line
+          local prefix = line:sub(1, clamp(end_col, 0, #line))
+
+          right_col = math.max(right_col, line_origin_col + vim.fn.strdisplaywidth(prefix))
+        end
+
+        anchor = {
+          top = clamp(start_row - top_line, 0, win_height - 1),
+          bottom = clamp(end_row - top_line, 0, win_height - 1),
+          right = clamp(right_col, 0, win_width - 1),
+        }
+      end
+    end
+
+    local vertical_col = clamp(cursor_screen_col + col_gap, 0, max_col)
+    local right_col = anchor.right + col_gap
+    local below_row = anchor.bottom + row_gap
+    local above_row = anchor.top - height - row_gap
+    local choices = {
+      { row = clamp(anchor.top, 0, max_row), col = right_col, fits = right_col <= max_col },
+      { row = below_row, col = vertical_col, fits = below_row <= max_row },
+      { row = above_row, col = vertical_col, fits = above_row >= 0 },
+    }
+
+    for _, choice in ipairs(choices) do
+      if choice.fits then
+        return { row = choice.row, col = choice.col }
+      end
+    end
+
     return {
-      row = math.max(0, vim.fn.winline() + state.opts.window.row_offset - 1),
-      col = math.max(0, vim.fn.wincol() + state.opts.window.col_offset - 1),
+      row = clamp(anchor.top, 0, max_row),
+      col = vertical_col,
     }
   end)
 end
@@ -56,19 +138,6 @@ local function float_config()
     title = " Textobjects ",
     style = "minimal",
   }
-end
-
-local function cursor_row()
-  if #state.candidates == 0 then
-    return nil
-  end
-
-  return vim.api.nvim_win_get_cursor(state.hud_win)[1]
-end
-
-local function candidate_at_cursor()
-  local row = cursor_row()
-  return row and state.candidates[row] or nil
 end
 
 ---@param source TextobjectHudSource|fun(ctx: TextobjectHudContext, opts: TextobjectHudConfig): TextobjectHudCandidate[]
@@ -198,7 +267,7 @@ function M.open(opts)
 end
 
 function M.reposition()
-  if valid_win(state.hud_win) and valid_win(state.source_win) and state.opts then
+  if valid_win(state.hud_win) and valid_win(state.source_win) and state.opts and state.layout then
     vim.api.nvim_win_set_config(state.hud_win, float_config())
   end
 end
@@ -208,6 +277,7 @@ function M.sync_selection()
 
   if item then
     highlight.show(item, state.opts)
+    M.reposition()
   elseif state.source_buf then
     highlight.clear(state.source_buf)
   end

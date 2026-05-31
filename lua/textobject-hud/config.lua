@@ -11,8 +11,8 @@ local M = {}
 ---@class TextobjectHudWindowConfig
 ---@field border string | string[] Floating window border.
 ---@field max_height integer Maximum HUD height.
----@field row_offset integer Row offset from the source cursor.
----@field col_offset integer Column offset from the source cursor.
+---@field row_offset integer Vertical gap from the selected range, or cursor fallback.
+---@field col_offset integer Horizontal gap from the selected range, or cursor fallback.
 ---@field follow boolean Reposition the HUD when the source cursor or source
 ---  window changes.
 
@@ -62,7 +62,7 @@ local M = {}
 -- stylua: ignore start
 local defaults = {
 --minidoc_replace_end
-  -- Floating HUD window.
+  -- Floating HUD window. It prefers the right side and avoids the selected range.
   window = {
     border = "rounded",
     max_height = 12,
