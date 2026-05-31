@@ -57,8 +57,6 @@ local function source_position()
     local max_col = math.max(0, win_width - state.layout.width)
     local row_gap = math.max(0, state.opts.window.row_offset)
     local col_gap = math.max(0, state.opts.window.col_offset)
-    local cursor = vim.api.nvim_win_get_cursor(state.source_win)
-    local cursor_row = cursor[1] - 1
     local cursor_screen_row = math.max(0, vim.fn.winline() - 1)
     local cursor_screen_col = math.max(0, vim.fn.wincol() - 1)
     local window_screen_col = vim.fn.win_screenpos(state.source_win)[2]
