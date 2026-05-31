@@ -94,10 +94,6 @@ end
 ---@param total_width integer
 ---@return string[]
 function M.render(candidates, total_width)
-  if #candidates == 0 then
-    return { "No textobjects at cursor" }
-  end
-
   local layout = M.layout(candidates, total_width)
   local lines = {}
 

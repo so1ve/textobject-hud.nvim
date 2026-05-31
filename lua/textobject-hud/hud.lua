@@ -144,11 +144,17 @@ function M.open(opts)
   M.close()
 
   local source_win = vim.api.nvim_get_current_win()
+  local candidates = M.collect(opts, source_win)
+
+  if #candidates == 0 then
+    vim.notify("No textobjects at cursor", vim.log.levels.WARN)
+    return
+  end
 
   state.opts = opts
   state.source_win = source_win
   state.source_buf = vim.api.nvim_win_get_buf(source_win)
-  state.candidates = M.collect(state.opts, source_win)
+  state.candidates = candidates
   state.hud_buf = vim.api.nvim_create_buf(false, true)
   state.hud_win = vim.api.nvim_open_win(state.hud_buf, true, float_config())
 
