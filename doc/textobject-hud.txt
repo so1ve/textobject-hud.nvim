@@ -1,14 +1,15 @@
-*textobject-hud.nvim* Show structural textobjects available at cursor
+*textobject-hud.nvim* Show selectable ranges available at cursor
 
-`textobject-hud.nvim` opens a small cursor-local HUD for Tree-sitter
-textobject captures. It discovers captures from `textobjects.scm`, previews
-the exact source range under the HUD cursor, and selects that range with
-`<CR>`.
+`textobject-hud.nvim` opens a small cursor-local HUD for textobjects and
+other selectable ranges. It collects candidates from configured sources,
+previews the exact source range under the HUD cursor, and selects that range
+with `<CR>`.
 
-Key hints are display-only; textobjects are discovered automatically from
-`textobjects.scm` when those query files are available on 'runtimepath'.
-Generic Tree-sitter ancestor nodes can be enabled, but are off by default
-because they are AST node types, not textobject captures.
+Built-in sources include Tree-sitter captures from `textobjects.scm` and
+mini.ai textobjects when available. Key hints are display-only and do not
+define, whitelist, or override textobjects.
+
+Built-in source objects are exposed as `require("textobject-hud").sources`.
 
 # Setup ~
 
@@ -24,9 +25,13 @@ Suggested mapping:
   end, { desc = "Open textobject HUD" })
 <
 
-Optional dependency: `nvim-treesitter-textobjects` query files on
-'runtimepath' provide capture-based entries like `@function.outer` and
-`@parameter.inner`.
+Optional sources:
+- `nvim-treesitter-textobjects` query files on 'runtimepath' provide
+  capture-based entries like `@function.outer` and `@parameter.inner`.
+- `mini.ai` provides configurable textobjects like arguments, brackets,
+  quotes, functions, and custom specs.
+- `hud.sources.treesitter_ancestors` adds generic AST node ranges when
+  explicitly included in `sources`.
 
 # Usage ~
 
@@ -78,6 +83,36 @@ Print and return candidates collected at the current cursor.
 
 ==============================================================================
 ------------------------------------------------------------------------------
+# Sources ~
+
+Built-in source descriptors are available from
+`require("textobject-hud").sources` and can be placed directly in
+|TextobjectHudConfig.sources|.
+
+Example:
+>lua
+  local hud = require("textobject-hud")
+
+  hud.setup({
+    sources = { hud.sources.mini_ai },
+  })
+<
+
+Available built-ins:
+- `hud.sources.treesitter`: captures from `textobjects.scm`.
+- `hud.sources.mini_ai`: configured mini.ai textobjects.
+- `hud.sources.treesitter_ancestors`: generic Tree-sitter AST ancestors.
+
+Class ~
+{TextobjectHudSource}
+Fields ~
+{name} `(string)` Source name shown in the HUD as a trailing comment-style column.
+{key_prefix} `(string)` Prefix used by `key_hints`, before the `:`.
+{collect} `(fun(ctx: TextobjectHudContext, opts: TextobjectHudConfig, source: TextobjectHudSource): TextobjectHudCandidate[])`
+
+
+==============================================================================
+------------------------------------------------------------------------------
 # Options ~
 
 Configuration is passed to `require("textobject-hud").setup()`.
@@ -86,7 +121,6 @@ Class ~
 {TextobjectHudWindowConfig}
 Fields ~
 {border} `(string | string[])` Floating window border.
-{width} `(integer)` HUD width.
 {max_height} `(integer)` Maximum HUD height.
 {row_offset} `(integer)` Row offset from the source cursor.
 {col_offset} `(integer)` Column offset from the source cursor.
@@ -104,10 +138,6 @@ Fields ~
 Class ~
 {TextobjectHudCollectConfig}
 Fields ~
-{ancestors} `(boolean)` Include generic Tree-sitter ancestor nodes. These
- are AST node types, not textobject captures.
-{textobjects} `(boolean)` Include automatically discovered captures from
- `textobjects.scm` when query files exist.
 {max_ancestor_depth} `(integer)` Maximum number of containing ancestor nodes to inspect.
 {max_lines} `(integer)` Ignore very large ranges.
 {include_anonymous} `(boolean)` Include anonymous Tree-sitter nodes in ancestor candidates.
@@ -118,18 +148,21 @@ Class ~
 Fields ~
 {window} `(TextobjectHudWindowConfig)` Floating window options.
 {preview} `(TextobjectHudPreviewConfig)` Source preview options.
+{sources} `(TextobjectHudSource[])` Candidate sources. Use
+ `require("textobject-hud").sources.*` entries.
 {collect} `(TextobjectHudCollectConfig)` Candidate collection options.
-{key_hints} `(table<string, string | string[]>)` Display-only capture-to-keys mapping.
+{key_hints} `(table<string, string | string[]>)` Display-only source-prefixed
+ candidate-to-keys mapping.
 
 ------------------------------------------------------------------------------
 # Default config ~
 
 >lua
-  require("textobject-hud").setup({
+  local hud = require("textobject-hud")
+  hud.setup({
     -- Floating HUD window.
     window = {
       border = "rounded",
-      width = 50,
       max_height = 12,
       row_offset = 1,
       col_offset = 1,
@@ -142,35 +175,43 @@ Fields ~
       hl_group = "TextobjectHudRange",
     },
 
-    -- Candidate sources and safety limits.
-    -- `textobjects` discovers captures from `textobjects.scm` automatically.
-    -- `ancestors` adds generic AST nodes, so it is disabled by default.
+    -- Candidate sources. Replace this list to choose exactly which sources run.
+    -- Built-ins are available as `require("textobject-hud").sources.*`.
+    sources = {
+      hud.sources.treesitter,
+      hud.sources.mini_ai,
+    },
+
+    -- Source safety limits.
+    -- `max_ancestor_depth` and `include_anonymous` affect `treesitter_ancestors`.
     collect = {
-      ancestors = false,
-      textobjects = true,
       max_ancestor_depth = 20,
       max_lines = 200,
       include_anonymous = false,
     },
 
-    -- Display-only capture-to-keys mapping. This does not define or whitelist
-    -- textobjects; it only annotates captures that were already discovered.
+    -- Display-only source-prefixed candidate-to-keys mapping. This does not define
+    -- or whitelist textobjects; it only annotates candidates that were discovered.
     key_hints = {},
   })
 <
 
-`key_hints` maps capture names to display-only hints:
+`key_hints` maps source-prefixed candidate names to display-only hints:
 >lua
-  require("textobject-hud").setup({
+  local hud = require("textobject-hud")
+
+  hud.setup({
+    sources = { hud.sources.treesitter, hud.sources.mini_ai },
     key_hints = {
-      ["@function.outer"] = { "]f", "[f", "]F", "[F" },
-      ["@function.inner"] = "if",
+      ["treesitter:@function.outer"] = { "]f", "[f", "]F", "[F" },
+      ["treesitter:@function.inner"] = "if",
+      ["mini_ai:a("] = "a(",
     },
   })
 <
 
-This table does not define or whitelist textobjects. Captures are discovered
-from `textobjects.scm` automatically.
+This table does not define or whitelist textobjects. Candidates are
+discovered from configured sources automatically.
 
 
  vim:tw=78:ts=8:noet:ft=help:norl:

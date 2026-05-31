@@ -4,9 +4,10 @@ local config = require("textobject-hud.config")
 local context = require("textobject-hud.context")
 local display = require("textobject-hud.display")
 local highlight = require("textobject-hud.highlight")
-local query = require("textobject-hud.query")
 
 local M = {}
+
+local namespace = vim.api.nvim_create_namespace("textobject-hud")
 
 local state = {
   hud_win = nil,
@@ -14,6 +15,7 @@ local state = {
   source_win = nil,
   source_buf = nil,
   candidates = {},
+  layout = nil,
   opts = nil,
   augroup = nil,
 }
@@ -47,7 +49,7 @@ local function float_config()
     win = state.source_win,
     row = position.row,
     col = position.col,
-    width = state.opts.window.width,
+    width = state.layout.width,
     height = hud_height(),
     border = state.opts.window.border,
     focusable = true,
@@ -69,10 +71,38 @@ local function candidate_at_cursor()
   return row and state.candidates[row] or nil
 end
 
+---@param source TextobjectHudSource|fun(ctx: TextobjectHudContext, opts: TextobjectHudConfig): TextobjectHudCandidate[]
+---@param ctx TextobjectHudContext
+---@param opts TextobjectHudConfig
+---@return TextobjectHudCandidate[]
+local function collect_source(source, ctx, opts)
+  if type(source) == "function" then
+    return source(ctx, opts)
+  end
+
+  local result = source.collect(ctx, opts, source)
+  for _, item in ipairs(result) do
+    item.source = item.source or source.name
+    item.key_prefix = item.key_prefix or source.key_prefix
+  end
+
+  return result
+end
+
 local function render()
+  local lines, highlights = display.render(state.candidates, state.layout)
+
   vim.bo[state.hud_buf].modifiable = true
-  vim.api.nvim_buf_set_lines(state.hud_buf, 0, -1, false, display.render(state.candidates, state.opts.window.width))
+  vim.api.nvim_buf_clear_namespace(state.hud_buf, namespace, 0, -1)
+  vim.api.nvim_buf_set_lines(state.hud_buf, 0, -1, false, lines)
   vim.bo[state.hud_buf].modifiable = false
+
+  for _, item in ipairs(highlights) do
+    vim.api.nvim_buf_set_extmark(state.hud_buf, namespace, item.row, item.start_col, {
+      end_col = item.end_col,
+      hl_group = item.hl_group,
+    })
+  end
 
   if #state.candidates > 0 then
     vim.api.nvim_win_set_cursor(state.hud_win, { 1, 0 })
@@ -123,12 +153,8 @@ function M.collect(opts, source_win)
   local ctx = context.get({ win = source_win })
   local collected = {}
 
-  if opts.collect.ancestors then
-    vim.list_extend(collected, query.collect_ancestors(ctx, opts))
-  end
-
-  if opts.collect.textobjects then
-    vim.list_extend(collected, query.collect_textobjects(ctx, opts))
+  for _, source in ipairs(opts.sources) do
+    vim.list_extend(collected, collect_source(source, ctx, opts))
   end
 
   return candidate.prepare(collected, {
@@ -155,6 +181,7 @@ function M.open(opts)
   state.source_win = source_win
   state.source_buf = vim.api.nvim_win_get_buf(source_win)
   state.candidates = candidates
+  state.layout = display.layout(candidates)
   state.hud_buf = vim.api.nvim_create_buf(false, true)
   state.hud_win = vim.api.nvim_open_win(state.hud_buf, true, float_config())
 
@@ -204,6 +231,7 @@ function M.close()
   state.source_win = nil
   state.source_buf = nil
   state.candidates = {}
+  state.layout = nil
   state.opts = nil
   state.augroup = nil
 end

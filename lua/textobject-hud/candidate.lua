@@ -7,6 +7,7 @@ local M = {}
 ---@field name string
 ---@field label string
 ---@field source string
+---@field key_prefix? string
 ---@field bufnr? integer
 ---@field range TextobjectHudRange
 ---@field node? TSNode

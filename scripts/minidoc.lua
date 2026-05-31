@@ -4,4 +4,7 @@ if _G.MiniDoc == nil then
   minidoc.setup()
 end
 
-MiniDoc.generate({ "lua/textobject-hud/init.lua", "lua/textobject-hud/config.lua" }, "doc/textobject-hud.txt")
+MiniDoc.generate(
+  { "lua/textobject-hud/init.lua", "lua/textobject-hud/sources.lua", "lua/textobject-hud/config.lua" },
+  "doc/textobject-hud.txt"
+)

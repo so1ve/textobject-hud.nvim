@@ -1,3 +1,7 @@
+--minidoc_replace_start local hud = require("textobject-hud")
+local hud = { sources = require("textobject-hud.sources") }
+--minidoc_replace_end
+
 local M = {}
 
 --- # Options ~
@@ -6,7 +10,6 @@ local M = {}
 ---
 ---@class TextobjectHudWindowConfig
 ---@field border string | string[] Floating window border.
----@field width integer HUD width.
 ---@field max_height integer Maximum HUD height.
 ---@field row_offset integer Row offset from the source cursor.
 ---@field col_offset integer Column offset from the source cursor.
@@ -18,10 +21,6 @@ local M = {}
 ---@field hl_group string Highlight group used for source range preview.
 
 ---@class TextobjectHudCollectConfig
----@field ancestors boolean Include generic Tree-sitter ancestor nodes. These
----  are AST node types, not textobject captures.
----@field textobjects boolean Include automatically discovered captures from
----  `textobjects.scm` when query files exist.
 ---@field max_ancestor_depth integer Maximum number of containing ancestor nodes to inspect.
 ---@field max_lines integer Ignore very large ranges.
 ---@field include_anonymous boolean Include anonymous Tree-sitter nodes in ancestor candidates.
@@ -29,34 +28,43 @@ local M = {}
 ---@class TextobjectHudConfig
 ---@field window TextobjectHudWindowConfig Floating window options.
 ---@field preview TextobjectHudPreviewConfig Source preview options.
+---@field sources TextobjectHudSource[] Candidate sources. Use
+---  `require("textobject-hud").sources.*` entries.
 ---@field collect TextobjectHudCollectConfig Candidate collection options.
----@field key_hints table<string, string | string[]> Display-only capture-to-keys mapping.
+---@field key_hints table<string, string | string[]> Display-only source-prefixed
+---  candidate-to-keys mapping.
 
 --- # Default config ~
 ---
 ---@eval return MiniDoc.afterlines_to_code(MiniDoc.current.eval_section)
 ---@text
---- `key_hints` maps capture names to display-only hints:
+--- `key_hints` maps source-prefixed candidate names to display-only hints:
 --- >lua
----   require("textobject-hud").setup({
+---   local hud = require("textobject-hud")
+---
+---   hud.setup({
+---     sources = { hud.sources.treesitter, hud.sources.mini_ai },
 ---     key_hints = {
----       ["@function.outer"] = { "]f", "[f", "]F", "[F" },
----       ["@function.inner"] = "if",
+---       ["treesitter:@function.outer"] = { "]f", "[f", "]F", "[F" },
+---       ["treesitter:@function.inner"] = "if",
+---       ["mini_ai:a("] = "a(",
 ---     },
 ---   })
 --- <
 ---
---- This table does not define or whitelist textobjects. Captures are discovered
---- from `textobjects.scm` automatically.
+--- This table does not define or whitelist textobjects. Candidates are
+--- discovered from configured sources automatically.
 ---
---minidoc_replace_start require("textobject-hud").setup({
+--minidoc_replace_start local hud = require("textobject-hud")
+-- This line is replaced in generated docs.
+--minidoc_replace_end
+--minidoc_replace_start hud.setup({
 -- stylua: ignore start
 local defaults = {
 --minidoc_replace_end
   -- Floating HUD window.
   window = {
     border = "rounded",
-    width = 50,
     max_height = 12,
     row_offset = 1,
     col_offset = 1,
@@ -69,19 +77,23 @@ local defaults = {
     hl_group = "TextobjectHudRange",
   },
 
-  -- Candidate sources and safety limits.
-  -- `textobjects` discovers captures from `textobjects.scm` automatically.
-  -- `ancestors` adds generic AST nodes, so it is disabled by default.
+  -- Candidate sources. Replace this list to choose exactly which sources run.
+  -- Built-ins are available as `require("textobject-hud").sources.*`.
+  sources = {
+    hud.sources.treesitter,
+    hud.sources.mini_ai,
+  },
+
+  -- Source safety limits.
+  -- `max_ancestor_depth` and `include_anonymous` affect `treesitter_ancestors`.
   collect = {
-    ancestors = false,
-    textobjects = true,
     max_ancestor_depth = 20,
     max_lines = 200,
     include_anonymous = false,
   },
 
-  -- Display-only capture-to-keys mapping. This does not define or whitelist
-  -- textobjects; it only annotates captures that were already discovered.
+  -- Display-only source-prefixed candidate-to-keys mapping. This does not define
+  -- or whitelist textobjects; it only annotates candidates that were discovered.
   key_hints = {},
 --minidoc_replace_start })
 }
@@ -92,10 +104,25 @@ local defaults = {
 local options
 
 ---@private
+---@param base TextobjectHudConfig
+---@param opts TextobjectHudConfig
+---@return TextobjectHudConfig
+local function merge_options(base, opts)
+  local sources = opts.sources
+  local result = vim.tbl_deep_extend("force", base, opts)
+
+  if sources then
+    result.sources = sources
+  end
+
+  return result
+end
+
+---@private
 ---@param opts TextobjectHudConfig
 ---@return TextobjectHudConfig
 function M.setup(opts)
-  options = vim.tbl_deep_extend("force", defaults, opts)
+  options = merge_options(defaults, opts)
   return options
 end
 

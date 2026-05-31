@@ -1,14 +1,15 @@
---- *textobject-hud.nvim* Show structural textobjects available at cursor
+--- *textobject-hud.nvim* Show selectable ranges available at cursor
 ---
---- `textobject-hud.nvim` opens a small cursor-local HUD for Tree-sitter
---- textobject captures. It discovers captures from `textobjects.scm`, previews
---- the exact source range under the HUD cursor, and selects that range with
---- `<CR>`.
+--- `textobject-hud.nvim` opens a small cursor-local HUD for textobjects and
+--- other selectable ranges. It collects candidates from configured sources,
+--- previews the exact source range under the HUD cursor, and selects that range
+--- with `<CR>`.
 ---
---- Key hints are display-only; textobjects are discovered automatically from
---- `textobjects.scm` when those query files are available on 'runtimepath'.
---- Generic Tree-sitter ancestor nodes can be enabled, but are off by default
---- because they are AST node types, not textobject captures.
+--- Built-in sources include Tree-sitter captures from `textobjects.scm` and
+--- mini.ai textobjects when available. Key hints are display-only and do not
+--- define, whitelist, or override textobjects.
+---
+--- Built-in source objects are exposed as `require("textobject-hud").sources`.
 ---
 --- # Setup ~
 ---
@@ -24,9 +25,13 @@
 ---   end, { desc = "Open textobject HUD" })
 --- <
 ---
---- Optional dependency: `nvim-treesitter-textobjects` query files on
---- 'runtimepath' provide capture-based entries like `@function.outer` and
---- `@parameter.inner`.
+--- Optional sources:
+--- - `nvim-treesitter-textobjects` query files on 'runtimepath' provide
+---   capture-based entries like `@function.outer` and `@parameter.inner`.
+--- - `mini.ai` provides configurable textobjects like arguments, brackets,
+---   quotes, functions, and custom specs.
+--- - `hud.sources.treesitter_ancestors` adds generic AST node ranges when
+---   explicitly included in `sources`.
 ---
 --- # Usage ~
 ---
@@ -53,6 +58,23 @@
 
 local M = {}
 
+M.sources = require("textobject-hud.sources")
+
+---@private
+---@param base TextobjectHudConfig
+---@param opts TextobjectHudConfig
+---@return TextobjectHudConfig
+local function merge_options(base, opts)
+  local sources = opts.sources
+  local result = vim.tbl_deep_extend("force", base, opts)
+
+  if sources then
+    result.sources = sources
+  end
+
+  return result
+end
+
 --- Setup global configuration.
 ---@param opts? TextobjectHudConfig
 function M.setup(opts)
@@ -68,7 +90,7 @@ end
 function M.open(opts)
   local config = require("textobject-hud.config")
   local hud = require("textobject-hud.hud")
-  local merged = opts and vim.tbl_deep_extend("force", config.get(), opts) or config.get()
+  local merged = opts and merge_options(config.get(), opts) or config.get()
 
   return hud.open(merged)
 end

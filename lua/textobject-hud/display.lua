@@ -4,104 +4,140 @@ local function width(text)
   return vim.fn.strdisplaywidth(text or "")
 end
 
-local function truncate(text, max_width)
-  text = text or ""
+local function pad(text, max_width, align)
+  local padding = string.rep(" ", math.max(0, max_width - width(text)))
 
-  if max_width <= 0 then
-    return ""
+  if align == "right" then
+    return padding .. text
   end
 
-  if width(text) <= max_width then
-    return text
-  end
-
-  if max_width == 1 then
-    return "…"
-  end
-
-  local result = ""
-  local index = 0
-
-  while true do
-    local char = vim.fn.strcharpart(text, index, 1)
-    if char == "" then
-      break
-    end
-
-    if width(result .. char .. "…") > max_width then
-      break
-    end
-
-    result = result .. char
-    index = index + 1
-  end
-
-  return result .. "…"
+  return text .. padding
 end
 
-local function pad_right(text, max_width)
-  return text .. string.rep(" ", math.max(0, max_width - width(text)))
-end
+local columns = {
+  { name = "label", align = "left", min_width = 1 },
+  { name = "key", align = "right", min_width = 0 },
+  { name = "source", align = "left", min_width = 0 },
+}
 
-local function pad_left(text, max_width)
-  return string.rep(" ", math.max(0, max_width - width(text))) .. text
+local separator = "  "
+
+---@param column_widths integer[]
+---@return integer
+local function layout_width(column_widths)
+  local total = 0
+  local visible = 0
+
+  for _, column_width in ipairs(column_widths) do
+    if column_width > 0 then
+      visible = visible + 1
+      total = total + column_width
+    end
+  end
+
+  return math.max(1, total + math.max(0, visible - 1) * width(separator))
 end
 
 ---@param item TextobjectHudCandidate
----@return string
-local function label_for_item(item)
-  return item.capture or item.label or item.name or "object"
+---@return string[]
+local function row_for_item(item)
+  return {
+    item.capture or item.label or item.name or "object",
+    item.key_hint or "",
+    item.source or "",
+  }
 end
 
 ---@param candidates TextobjectHudCandidate[]
----@param total_width integer
 ---@return table
-function M.layout(candidates, total_width)
-  local label_width = 1
-  local key_width = 0
+function M.layout(candidates)
+  local rows = {}
+  local widths = {}
 
-  for _, item in ipairs(candidates) do
-    label_width = math.max(label_width, width(label_for_item(item)))
-    key_width = math.max(key_width, width(item.key_hint or ""))
+  for index, column in ipairs(columns) do
+    widths[index] = column.min_width or 0
   end
 
-  key_width = math.min(key_width, math.max(0, total_width - 3))
-  label_width = math.min(label_width, math.max(1, total_width - (key_width > 0 and key_width + 2 or 0)))
+  for _, item in ipairs(candidates) do
+    local row = row_for_item(item)
+    rows[#rows + 1] = row
+
+    for index, text in ipairs(row) do
+      widths[index] = math.max(widths[index], width(text))
+    end
+  end
+
+  local layout_columns = {}
+
+  for index, column in ipairs(columns) do
+    layout_columns[index] = {
+      name = column.name,
+      align = column.align,
+      width = widths[index],
+    }
+  end
 
   return {
-    width = total_width,
-    label_width = label_width,
-    key_width = key_width,
+    width = layout_width(widths),
+    columns = layout_columns,
+    rows = rows,
   }
 end
 
 ---@param item TextobjectHudCandidate
 ---@param layout table
----@return string
+---@return string, integer?, integer?
 function M.line(item, layout)
-  local label = truncate(label_for_item(item), layout.label_width)
-  local key = truncate(item.key_hint or "", layout.key_width)
-  local left = pad_right(label, layout.label_width)
+  local row = row_for_item(item)
+  local parts = {}
+  local source_start
+  local source_end
+  local line_width = 0
 
-  if layout.key_width > 0 then
-    return left .. "  " .. pad_left(key, layout.key_width)
+  for index, column in ipairs(layout.columns) do
+    if column.width > 0 then
+      if #parts > 0 then
+        parts[#parts + 1] = separator
+        line_width = line_width + #separator
+      end
+
+      local text = row[index] or ""
+      if column.name == "source" and text ~= "" then
+        source_start = line_width
+        source_end = source_start + #text
+      end
+
+      local cell = pad(text, column.width, column.align)
+      parts[#parts + 1] = cell
+      line_width = line_width + #cell
+    end
   end
 
-  return left
+  return table.concat(parts), source_start, source_end
 end
 
 ---@param candidates TextobjectHudCandidate[]
----@param total_width integer
----@return string[]
-function M.render(candidates, total_width)
-  local layout = M.layout(candidates, total_width)
+---@param layout table
+---@return string[], table[]
+function M.render(candidates, layout)
   local lines = {}
+  local highlights = {}
 
-  for _, item in ipairs(candidates) do
-    lines[#lines + 1] = M.line(item, layout)
+  for index, item in ipairs(candidates) do
+    local line, source_start, source_end = M.line(item, layout)
+    lines[index] = line
+
+    if source_start and source_end and source_end > source_start then
+      highlights[#highlights + 1] = {
+        row = index - 1,
+        start_col = source_start,
+        end_col = source_end,
+        hl_group = "TextobjectHudSource",
+      }
+    end
   end
 
-  return lines
+  return lines, highlights
 end
 
 return M

@@ -1,3 +1,4 @@
+local source_util = require("textobject-hud.sources.util")
 local util = require("textobject-hud.util")
 
 local M = {}
@@ -11,8 +12,9 @@ end
 
 ---@param ctx TextobjectHudContext
 ---@param opts TextobjectHudConfig
+---@param source TextobjectHudSource
 ---@return TextobjectHudCandidate[]
-function M.collect_ancestors(ctx, opts)
+function M.collect_ancestors(ctx, opts, source)
   if not ctx.node then
     return {}
   end
@@ -23,16 +25,14 @@ function M.collect_ancestors(ctx, opts)
 
   while node and depth < opts.collect.max_ancestor_depth do
     if opts.collect.include_anonymous or node:named() then
-      local range = node_range(node)
-      result[#result + 1] = {
+      result[#result + 1] = source_util.candidate(opts, source, {
         name = node:type(),
         label = node:type():gsub("_", " "),
-        source = "ancestor",
         bufnr = ctx.bufnr,
         node = node,
-        range = range,
+        range = node_range(node),
         priority = 10 + depth,
-      }
+      })
     end
 
     node = node:parent()
@@ -44,8 +44,9 @@ end
 
 ---@param ctx TextobjectHudContext
 ---@param opts TextobjectHudConfig
+---@param source TextobjectHudSource
 ---@return TextobjectHudCandidate[]
-function M.collect_textobjects(ctx, opts)
+function M.collect_captures(ctx, opts, source)
   if not ctx.root or not ctx.lang then
     return {}
   end
@@ -62,17 +63,15 @@ function M.collect_textobjects(ctx, opts)
     local range = node_range(node)
 
     if util.range_contains_cursor(range, ctx.cursor) then
-      result[#result + 1] = {
+      result[#result + 1] = source_util.candidate(opts, source, {
         name = capture:gsub("^@", ""),
-        label = capture:gsub("^@", ""),
-        source = "textobjects",
+        key = capture,
         capture = capture,
-        keys = opts.key_hints[capture],
         bufnr = ctx.bufnr,
         node = node,
         range = range,
         priority = 80,
-      }
+      })
     end
   end
 
