@@ -190,6 +190,14 @@ local function attach_autocmds()
     callback = M.close,
   })
 
+  vim.api.nvim_create_autocmd("BufLeave", {
+    group = state.augroup,
+    buffer = state.hud_buf,
+    callback = function()
+      M.close()
+    end,
+  })
+
   vim.api.nvim_create_autocmd("CursorMoved", {
     group = state.augroup,
     buffer = state.hud_buf,
