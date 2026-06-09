@@ -5,9 +5,10 @@
 --- previews the exact source range under the HUD cursor, avoids the selected
 --- range when possible, and selects that range with `<CR>`.
 ---
---- Built-in sources include Tree-sitter captures from `textobjects.scm` and
---- mini.ai textobjects when available. Key hints are display-only and do not
---- define, whitelist, or override textobjects.
+--- Built-in sources include Tree-sitter captures from `textobjects.scm`,
+--- mini.ai textobjects when available, and Vim/Neovim built-in textobjects.
+--- Key hints are display-only and do not define, whitelist, or override
+--- textobjects.
 ---
 --- Built-in source objects are exposed as `require("textobject-hud").sources`.
 ---
@@ -30,6 +31,8 @@
 ---   capture-based entries like `@function.outer` and `@parameter.inner`.
 --- - `mini.ai` provides configurable textobjects like arguments, brackets,
 ---   quotes, functions, and custom specs.
+--- - `hud.sources.builtin` probes Vim/Neovim built-in textobjects like `iw`,
+---   `a"`, `i(`, and `ap`.
 --- - `hud.sources.treesitter_ancestors` adds generic AST node ranges when
 ---   explicitly included in `sources`.
 ---

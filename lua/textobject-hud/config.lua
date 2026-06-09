@@ -43,11 +43,12 @@ local M = {}
 ---   local hud = require("textobject-hud")
 ---
 ---   hud.setup({
----     sources = { hud.sources.treesitter, hud.sources.mini_ai },
+---     sources = { hud.sources.treesitter, hud.sources.mini_ai, hud.sources.builtin },
 ---     key_hints = {
 ---       ["treesitter:@function.outer"] = { "]f", "[f", "]F", "[F" },
 ---       ["treesitter:@function.inner"] = "if",
 ---       ["mini_ai:a("] = "a(",
+---       ["builtin:iw"] = "iw",
 ---     },
 ---   })
 --- <
@@ -82,6 +83,7 @@ local defaults = {
   sources = {
     hud.sources.treesitter,
     hud.sources.mini_ai,
+    hud.sources.builtin,
   },
 
   -- Source safety limits.

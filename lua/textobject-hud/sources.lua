@@ -1,3 +1,4 @@
+local builtin = require("textobject-hud.sources.builtin")
 local mini_ai = require("textobject-hud.sources.mini_ai")
 local treesitter = require("textobject-hud.sources.treesitter")
 
@@ -21,6 +22,7 @@ local M = {}
 --- Available built-ins:
 --- - `hud.sources.treesitter`: captures from `textobjects.scm`.
 --- - `hud.sources.mini_ai`: configured mini.ai textobjects.
+--- - `hud.sources.builtin`: fixed Vim/Neovim built-in textobject keys.
 --- - `hud.sources.treesitter_ancestors`: generic Tree-sitter AST ancestors.
 ---
 ---@class TextobjectHudSource
@@ -44,6 +46,12 @@ M.mini_ai = {
   name = "mini.ai",
   key_prefix = "mini_ai",
   collect = mini_ai.collect,
+}
+
+M.builtin = {
+  name = "builtin",
+  key_prefix = "builtin",
+  collect = builtin.collect,
 }
 
 return M

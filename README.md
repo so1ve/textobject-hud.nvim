@@ -2,7 +2,7 @@
 
 Show the textobjects and selectable ranges available at your cursor in a small floating HUD.
 
-`textobject-hud.nvim` collects candidates from configured sources, previews the exact source range under the HUD cursor, and selects that range. Built-in sources include Tree-sitter textobject captures and mini.ai textobjects.
+`textobject-hud.nvim` collects candidates from configured sources, previews the exact source range under the HUD cursor, and selects that range. Built-in sources include Tree-sitter textobject captures, mini.ai textobjects, and Vim/Neovim built-in textobjects.
 
 ## Demo
 
@@ -38,10 +38,12 @@ Show the textobjects and selectable ranges available at your cursor in a small f
       sources = {
         hud.sources.treesitter,
         hud.sources.mini_ai,
+        hud.sources.builtin,
       },
       key_hints = {
         ["treesitter:@function.outer"] = { "]f", "[f", "]F", "[F" },
         ["treesitter:@parameter.inner"] = { "]a", "[a", "]A", "[A" },
+        ["builtin:iw"] = "iw",
       },
     }
   end,
@@ -91,6 +93,7 @@ hud.setup({
   sources = {
     hud.sources.treesitter,
     hud.sources.mini_ai,
+    hud.sources.builtin,
   },
 
   -- Source safety limits.
@@ -107,7 +110,9 @@ hud.setup({
 })
 ```
 
-`key_hints` keys use each source's `key_prefix`, for example `treesitter:@function.outer`, `mini_ai:a(`, or `treesitter_ancestors:function_definition`.
+`key_hints` keys use each source's `key_prefix`, for example `treesitter:@function.outer`, `mini_ai:a(`, `builtin:iw`, or `treesitter_ancestors:function_definition`.
+
+The builtin source probes a fixed list of Vim/Neovim textobject keys such as `iw`, `aw`, `i"`, `a(`, and `ap`. It does not enumerate user-defined textobject mappings.
 
 For complete documentation, see below.
 
